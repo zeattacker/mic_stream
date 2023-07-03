@@ -113,12 +113,34 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             // Wait until recorder is initialised
             while (recorder == null || recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
 
+            short threshold = 5000;
+            final int SILENCE_DEGREE = 15;
+            int silenceDegree = 0;
+
             // Repeatedly push audio samples to stream
             while (record) {
 
                 // Read audio data into new byte array
                 byte[] data = new byte[BUFFER_SIZE];
                 recorder.read(data, 0, BUFFER_SIZE);
+
+                int foundPeak = searchThreshold(convertByteArrayToShortArray(data), threshold);
+
+                if (foundPeak == -1) {
+                    if (silenceDegree <= SILENCE_DEGREE) {
+                        silenceDegree++;
+                    }
+                } else {
+                    silenceDegree = 0;
+                }
+
+                if (silenceDegree < SILENCE_DEGREE) {
+                    android.util.Log.d("Result", "Voice!");
+                } else {
+                    android.util.Log.d("Result", "Silent!");
+                }
+
+
 
                 // push data into stream
                 try {
@@ -222,6 +244,29 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             recorder.release();
         }
         recorder = null;
+    }
+
+    private static int searchThreshold(short[] arr, short thr) {
+        int arrLen = arr.length;
+        int peakIndex = 0;
+        while (peakIndex < arrLen) {
+            if (arr[peakIndex] >= thr || arr[peakIndex] <= -thr) {
+                return peakIndex;
+            }
+            peakIndex++;
+        }
+        return -1;
+    }
+
+    private static short[] convertByteArrayToShortArray(byte[] byteArray) {
+        int length = byteArray.length;
+        short[] shortArray = new short[length / 2];
+
+        for (int i = 0, j = 0; i < length; i += 2, j++) {
+            shortArray[j] = (short) ((byteArray[i] << 8) | (byteArray[i + 1] & 0xFF));
+        }
+
+        return shortArray;
     }
 }
 
