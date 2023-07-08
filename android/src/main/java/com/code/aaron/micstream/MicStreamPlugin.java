@@ -141,7 +141,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                         } else {
                             pauseTimed++;
                             System.out.println("Paused " + pauseTimed);
-                            eventSink.success(data);
+                            eventSink.success(new byte[0]);
                         }
                         // pause = true;
                     } else {
