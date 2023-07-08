@@ -136,12 +136,13 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                     rms = Math.sqrt(rms / voice.length);
                     System.out.println("Listening, rms is " + rms);
                     if (rms <= 0.1) {
-                        if (pauseTimed >= 40) {
+                        if (pauseTimed >= 30) {
                             System.out.println("Silenced for 40");
+                            eventSink.success(new byte[0]);
                         } else {
                             pauseTimed++;
                             System.out.println("Paused " + pauseTimed);
-                            eventSink.success(new byte[0]);
+                            eventSink.success(data);
                         }
                         // pause = true;
                     } else {
