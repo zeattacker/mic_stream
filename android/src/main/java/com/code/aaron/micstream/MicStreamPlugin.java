@@ -1,6 +1,8 @@
 package com.code.aaron.micstream;
 
 import java.lang.Math;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -58,6 +60,8 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
 
     // Audio recorder + initial values
     private static volatile AudioRecord recorder = null;
+    short threshold=5000;
+    private int SILENCE_DEGREE = 15;
 
     private int AUDIO_SOURCE = MediaRecorder.AudioSource.DEFAULT;
     private int SAMPLE_RATE = 16000;
@@ -112,40 +116,50 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
 
             // Wait until recorder is initialised
             while (recorder == null || recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
-
-            short threshold = 5000;
-            final int SILENCE_DEGREE = 15;
-            int silenceDegree = 0;
-
+            byte[] data = new byte[BUFFER_SIZE];
+            short[] voice = new short[data.length / 2];
+            int pauseTimed = 0;
             // Repeatedly push audio samples to stream
             while (record) {
+//                recorder.read(voice, 0, BUFFER_SIZE);
 
-                // Read audio data into new byte array
-                byte[] data = new byte[BUFFER_SIZE];
-                recorder.read(data, 0, BUFFER_SIZE);
-
-                int foundPeak = searchThreshold(convertByteArrayToShortArray(data), threshold);
-
-                if (foundPeak == -1) {
-                    if (silenceDegree <= SILENCE_DEGREE) {
-                        silenceDegree++;
-                    }
-                } else {
-                    silenceDegree = 0;
-                }
-
-                if (silenceDegree < SILENCE_DEGREE) {
-                    android.util.Log.d("Result", "Voice!");
-                } else {
-                    android.util.Log.d("Result", "Silent!");
-                }
-
-
-
-                // push data into stream
                 try {
-                    eventSink.success(data);
-                } catch (IllegalArgumentException e) {
+                    recorder.read(data, 0, BUFFER_SIZE);
+                    ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(voice);
+                    // int foundPeak = searchThreshold(voice,threshold);
+
+                    double rms = 0;
+                    for (int i = 0; i < voice.length; i++) {
+                        double normal = voice[i] / 32768f;
+                        rms += normal * normal;
+                    }
+                    rms = Math.sqrt(rms / voice.length);
+                    System.out.println("Listening, rms is " + rms);
+                    if (rms <= 0.1) {
+                        if (pauseTimed >= 40) {
+                            System.out.println("Silenced for 40");
+                        } else {
+                            pauseTimed++;
+                            System.out.println("Paused " + pauseTimed]);
+                            eventSink.success(data);
+                        }
+                        // pause = true;
+                    } else {
+                        pauseTimed = 0;
+                        eventSink.success(data);
+                    }
+                    // if (foundPeak == -1) {
+                    //     if (silenceDegree <= SILENCE_DEGREE) {
+                    //         silenceDegree++;
+                    //     }
+                    // } else {
+                    //     silenceDegree = 0;
+                    // }
+                    // if (silenceDegree < SILENCE_DEGREE) {
+                    //     eventSink.success(data);
+                    // }
+
+                } catch (Exception e) {
                     System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
                     eventSink.error("-1", "Invalid Data", e);
                 }
@@ -153,6 +167,19 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             isRecording = false;
         }
     };
+
+    int searchThreshold(byte[]arr,short thr){
+        int peakIndex;
+        int arrLen=arr.length;
+        for (peakIndex=0;peakIndex<arrLen;peakIndex++){
+            if ((arr[peakIndex]>=thr) || (arr[peakIndex]<=-thr)){
+
+                return peakIndex;
+            }
+        }
+        return -1; //not found
+    }
+
 
     /// Bug fix by https://github.com/Lokhozt
     /// following https://github.com/flutter/flutter/issues/34993
@@ -245,28 +272,4 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         }
         recorder = null;
     }
-
-    private static int searchThreshold(short[] arr, short thr) {
-        int arrLen = arr.length;
-        int peakIndex = 0;
-        while (peakIndex < arrLen) {
-            if (arr[peakIndex] >= thr || arr[peakIndex] <= -thr) {
-                return peakIndex;
-            }
-            peakIndex++;
-        }
-        return -1;
-    }
-
-    private static short[] convertByteArrayToShortArray(byte[] byteArray) {
-        int length = byteArray.length;
-        short[] shortArray = new short[length / 2];
-
-        for (int i = 0, j = 0; i < length; i += 2, j++) {
-            shortArray[j] = (short) ((byteArray[i] << 8) | (byteArray[i + 1] & 0xFF));
-        }
-
-        return shortArray;
-    }
 }
-
