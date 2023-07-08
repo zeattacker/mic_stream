@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 import android.annotation.TargetApi;
 import android.media.AudioFormat;
@@ -135,11 +136,12 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                     }
                     rms = Math.sqrt(rms / voice.length);
                     System.out.println("Listening, rms is " + rms);
-                    if (rms <= 0.1) {
-                        if (pauseTimed >= 60) {
+                    if (rms <= 0.05) {
+                        if (pauseTimed > 2) {
                             System.out.println("Stopped Recording");
                             eventSink.success(new byte[0]);
                         } else {
+                            TimeUnit.SECONDS.sleep(1);
                             pauseTimed++;
                             System.out.println("Pause counter " + pauseTimed);
                             eventSink.success(data);
