@@ -135,7 +135,6 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                 try {
                     recorder.read(data, 0, BUFFER_SIZE);
                     ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(voice);
-                    // int foundPeak = searchThreshold(voice,threshold);
 
                     double rms = 0;
                     for (int i = 0; i < voice.length; i++) {
@@ -143,33 +142,20 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                         rms += normal * normal;
                     }
                     rms = Math.sqrt(rms / voice.length);
-                    System.out.println("Listening, rms is " + rms);
-                    System.out.println("Audio Level : " + AUDIO_LEVEL);
-                    System.out.println("Pause Interval" + PAUSE_INTERVAL);
-                    if (rms <= 0.075) {
-                        if (pauseTimed >= 40) {
-                            System.out.println("Stopped Recording");
+                    // System.out.println("Listening, rms is " + rms);
+                    if (rms <= AUDIO_LEVEL) {
+                        if (pauseTimed >= PAUSE_INTERVAL) {
+                            // System.out.println("Stopped Recording");
                             eventSink.success(new byte[0]);
                         } else {
                             pauseTimed++;
-                            System.out.println("Pause counter " + pauseTimed);
+                            // System.out.println("Pause counter " + pauseTimed);
                             eventSink.success(data);
                         }
-                        // pause = true;
                     } else {
                         pauseTimed = 0;
                         eventSink.success(data);
                     }
-                    // if (foundPeak == -1) {
-                    //     if (silenceDegree <= SILENCE_DEGREE) {
-                    //         silenceDegree++;
-                    //     }
-                    // } else {
-                    //     silenceDegree = 0;
-                    // }
-                    // if (silenceDegree < SILENCE_DEGREE) {
-                    //     eventSink.success(data);
-                    // }
 
                 } catch (Exception e) {
                     System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
@@ -179,18 +165,6 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             isRecording = false;
         }
     };
-
-    int searchThreshold(byte[]arr,short thr){
-        int peakIndex;
-        int arrLen=arr.length;
-        for (peakIndex=0;peakIndex<arrLen;peakIndex++){
-            if ((arr[peakIndex]>=thr) || (arr[peakIndex]<=-thr)){
-
-                return peakIndex;
-            }
-        }
-        return -1; //not found
-    }
 
 
     /// Bug fix by https://github.com/Lokhozt
