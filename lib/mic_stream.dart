@@ -36,7 +36,7 @@ class MicStream {
 
   static const AudioSource DEFAULT_AUDIO_SOURCE = AudioSource.DEFAULT;
   static const int DEFAULT_PAUSE_INTERVAL = 40;
-  static const int DEFAULT_AUDIO_LEVEL = 0.1;
+  static const double DEFAULT_AUDIO_LEVEL = 0.1;
   static const ChannelConfig DEFAULT_CHANNELS_CONFIG =
       ChannelConfig.CHANNEL_IN_MONO;
   static const AudioFormat DEFAULT_AUDIO_FORMAT = AudioFormat.ENCODING_PCM_8BIT;
