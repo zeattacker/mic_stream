@@ -53,7 +53,7 @@ class MicStream {
   /// The actual sample rate used for streaming.  This may return zero if invoked without listening to the _microphone Stream
   static Future<double>? get sampleRate => _sampleRate;
 
-  static Future<double>? __sampleRate;
+  static Future<double>? _sampleRate;
   static Future<int>? _pauseInterval;
   static Future<double>? _audioLevel;
 
