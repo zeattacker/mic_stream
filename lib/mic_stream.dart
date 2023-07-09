@@ -35,6 +35,8 @@ class MicStream {
   static bool _requestPermission = true;
 
   static const AudioSource DEFAULT_AUDIO_SOURCE = AudioSource.DEFAULT;
+  static const int DEFAULT_PAUSE_INTERVAL = 40;
+  static const int DEFAULT_AUDIO_LEVEL = 0.1;
   static const ChannelConfig DEFAULT_CHANNELS_CONFIG =
       ChannelConfig.CHANNEL_IN_MONO;
   static const AudioFormat DEFAULT_AUDIO_FORMAT = AudioFormat.ENCODING_PCM_8BIT;
@@ -51,7 +53,9 @@ class MicStream {
   /// The actual sample rate used for streaming.  This may return zero if invoked without listening to the _microphone Stream
   static Future<double>? get sampleRate => _sampleRate;
 
-  static Future<double>? _sampleRate;
+  static Future<double>? __sampleRate;
+  static Future<int>? _pauseInterval;
+  static Future<double>? _audioLevel;
 
   /// The actual bit depth used for streaming. This may return zero if invoked without listening to the _microphone Stream first.
   static Future<int>? get bitDepth => _bitDepth;
@@ -67,6 +71,8 @@ class MicStream {
   static Stream<Uint8List>? _microphone;
   static AudioSource? __audioSource;
   static int? __sampleRate;
+  static int? __pauseInterval;
+  static double? __audioLevel;
   static ChannelConfig? __channelConfig;
   static AudioFormat? __audioFormat;
 
@@ -94,11 +100,15 @@ class MicStream {
       {AudioSource? audioSource,
       int? sampleRate,
       ChannelConfig? channelConfig,
+        int? pauseInterval,
+        double? audioLevel,
       AudioFormat? audioFormat}) async {
     audioSource ??= DEFAULT_AUDIO_SOURCE;
     sampleRate ??= DEFAULT_SAMPLE_RATE;
     channelConfig ??= DEFAULT_CHANNELS_CONFIG;
     audioFormat ??= DEFAULT_AUDIO_FORMAT;
+    pauseInterval ??= DEFAULT_PAUSE_INTERVAL;
+    audioLevel ??= DEFAULT_AUDIO_LEVEL;
 
     if (sampleRate < _MIN_SAMPLE_RATE || sampleRate > _MAX_SAMPLE_RATE)
       throw (RangeError.range(sampleRate, _MIN_SAMPLE_RATE, _MAX_SAMPLE_RATE));
@@ -109,7 +119,7 @@ class MicStream {
     if (audioSource != __audioSource ||
         sampleRate != __sampleRate ||
         channelConfig != __channelConfig ||
-        audioFormat != __audioFormat) {
+        audioFormat != __audioFormat || audioLevel != __audioLevel || pauseInterval != __pauseInterval) {
       //TODO: figure out whether the old stream needs to be cancelled
       _microphone = _microphoneEventChannel.receiveBroadcastStream([
         audioSource.index,
@@ -121,6 +131,8 @@ class MicStream {
       __sampleRate = sampleRate;
       __channelConfig = channelConfig;
       __audioFormat = audioFormat;
+      __audioLevel = audioLevel;
+      __pauseInterval = pauseInterval;
     }
 
     // sampleRate/bitDepth should be populated before any attempt to consume the stream externally.
@@ -130,9 +142,13 @@ class MicStream {
     var sampleRateCompleter = new Completer<double>();
     var bitDepthCompleter = new Completer<int>();
     var bufferSizeCompleter = new Completer<int>();
+    var pauseIntervalCompleter = new Completer<int>();
+    var audioLevelCompleter = new Completer<double>();
     _sampleRate = sampleRateCompleter.future;
     _bitDepth = bitDepthCompleter.future;
     _bufferSize = bufferSizeCompleter.future;
+    _audioLevel = audioLevelCompleter.future;
+    _pauseInterval = pauseIntervalCompleter.future;
 
     listener = _microphone!.listen((x) async {
       await listener!.cancel();
@@ -143,6 +159,10 @@ class MicStream {
           await _microphoneMethodChannel.invokeMethod("getBitDepth") as int?);
       bufferSizeCompleter.complete(
           await _microphoneMethodChannel.invokeMethod("getBufferSize") as int?);
+      audioLevelCompleter.complete(
+          await _microphoneMethodChannel.invokeMethod("getAudioLevel") as double?);
+      pauseIntervalCompleter.complete(
+          await _microphoneMethodChannel.invokeMethod("getPauseInterval") as int?);
     });
 
     return _microphone;
