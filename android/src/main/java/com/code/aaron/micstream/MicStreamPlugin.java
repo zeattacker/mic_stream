@@ -243,7 +243,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         // Set parameters, if available
         switch(config.size()) {
             case 6:
-                PAUSE_INTERVAL = config.get(5)
+                PAUSE_INTERVAL = config.get(5);
             case 5:
                 AUDIO_LEVEL = config.get(4);
             case 4:
